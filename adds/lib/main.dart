@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Import for keyboard events
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentPage = 1;
   int _totalCount = 0;
   bool _isLoading = false;
-  int _selectedRow = -1; // Track the selected row
+  int _selectedRow = -1;
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (menu == '신청서 접수') {
       _fetchData();
     }
-    Navigator.pop(context); // Close the drawer
+    Navigator.pop(context);
   }
 
   Future<void> _fetchData() async {
@@ -92,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
     } else {
-      // Handle error
       print('Failed to load data');
       setState(() {
         _isLoading = false;
@@ -115,10 +114,14 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedRow = (_selectedRow + offset).clamp(0, _data.length - 1);
     });
     _scrollController.animateTo(
-      _selectedRow * 48.0, // Assuming each row is 48 pixels high
+      _selectedRow * 48.0,
       duration: Duration(milliseconds: 200),
       curve: Curves.easeInOut,
     );
+  }
+
+  String _truncateWithEllipsis(int cutoff, String text) {
+    return (text.length <= cutoff) ? text : '${text.substring(0, cutoff)}...';
   }
 
   @override
@@ -184,79 +187,156 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: Column(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.grey),
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                            flex: 1,
-                            child: Text('No',
-                                style: TextStyle(fontWeight: FontWeight.bold))),
-                        Expanded(
-                            flex: 3,
-                            child: Text('Name',
-                                style: TextStyle(fontWeight: FontWeight.bold))),
-                        Expanded(
-                            flex: 3,
-                            child: Text('Representative',
-                                style: TextStyle(fontWeight: FontWeight.bold))),
-                      ],
-                    ),
-                  ),
                   Expanded(
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      itemCount: _data.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == _data.length) {
-                          return _isLoading
-                              ? Center(child: CircularProgressIndicator())
-                              : SizedBox.shrink();
-                        }
-                        final item = _data[index];
-                        final isSelected = index == _selectedRow;
-                        final isEven = index % 2 == 0;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedRow = index;
-                            });
-                          },
-                          child: Container(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Column(
+                        children: [
+                          Container(
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.blue.withOpacity(0.3)
-                                  : isEven
-                                      ? Colors.grey.withOpacity(0.1)
-                                      : Colors.white,
                               border: Border(
                                 bottom: BorderSide(color: Colors.grey),
                               ),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                      flex: 1, child: Text('${index + 1}')),
-                                  Expanded(
-                                      flex: 3,
-                                      child: Text(item['bsshNm'] ?? 'Unknown')),
-                                  Expanded(
-                                      flex: 3,
-                                      child:
-                                          Text(item['rprsntvNm'] ?? 'Unknown')),
-                                ],
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 50,
+                                  child: Text('No',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                                Container(
+                                  width: 100,
+                                  child: Text('업체코드',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                                Container(
+                                  width: 150,
+                                  child: Text('업체명',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                                Container(
+                                  width: 100,
+                                  child: Text('대표자명',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                                Container(
+                                  width: 100,
+                                  child: Text('업종',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.vertical,
+                              child: Column(
+                                children: List.generate(
+                                  _data.length,
+                                  (index) {
+                                    final item = _data[index];
+                                    final isSelected = index == _selectedRow;
+                                    final isEven = index % 2 == 0;
+                                    return GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedRow = index;
+                                        });
+                                      },
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? Colors.blue.withOpacity(0.3)
+                                              : isEven
+                                                  ? Colors.grey.withOpacity(0.1)
+                                                  : Colors.white,
+                                          border: Border(
+                                            bottom:
+                                                BorderSide(color: Colors.grey),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 50,
+                                              padding: EdgeInsets.all(8.0),
+                                              child: Tooltip(
+                                                message: '${index + 1}',
+                                                child: Text('${index + 1}'),
+                                              ),
+                                            ),
+                                            Container(
+                                              width: 100,
+                                              padding: EdgeInsets.all(8.0),
+                                              child: Tooltip(
+                                                message:
+                                                    item['bsshCd'] ?? 'Unknown',
+                                                child: Text(
+                                                    _truncateWithEllipsis(
+                                                        10,
+                                                        item['bsshCd'] ??
+                                                            'Unknown')),
+                                              ),
+                                            ),
+                                            Container(
+                                              width: 150,
+                                              padding: EdgeInsets.all(8.0),
+                                              child: Tooltip(
+                                                waitDuration:
+                                                    Duration(milliseconds: 500),
+                                                message:
+                                                    item['bsshNm'] ?? 'Unknown',
+                                                child: Text(
+                                                    _truncateWithEllipsis(
+                                                        9,
+                                                        item['bsshNm'] ??
+                                                            'Unknown')),
+                                              ),
+                                            ),
+                                            Container(
+                                              width: 100,
+                                              padding: EdgeInsets.all(8.0),
+                                              child: Tooltip(
+                                                message: item['rprsntvNm'] ??
+                                                    'Unknown',
+                                                child: Text(
+                                                    _truncateWithEllipsis(
+                                                        9,
+                                                        item['rprsntvNm'] ??
+                                                            'Unknown')),
+                                              ),
+                                            ),
+                                            Container(
+                                              width: 100,
+                                              padding: EdgeInsets.all(8.0),
+                                              child: Tooltip(
+                                                message: item['indutyNm'] ??
+                                                    'Unknown',
+                                                child: Text(
+                                                    _truncateWithEllipsis(
+                                                        9,
+                                                        item['indutyNm'] ??
+                                                            'Unknown')),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
                   ),
                   Padding(
@@ -274,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMenuItem(String title) {
     return ListTile(
-      contentPadding: EdgeInsets.only(left: 16.0), // Add padding to the left
+      contentPadding: EdgeInsets.only(left: 16.0),
       title: Text(
         title,
         style: TextStyle(
