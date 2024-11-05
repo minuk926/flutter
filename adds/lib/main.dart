@@ -1,29 +1,44 @@
+import 'package:adds/model/api_response.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/gestures.dart';
 import 'dart:convert';
+import 'widgets/table_data.dart';
+import 'service/api_util.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.touch,
+          PointerDeviceKind.stylus,
+          PointerDeviceKind.unknown
+        },
+      ),
       home: HomeScreen(),
     );
   }
 }
 
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedMenu = 'Main Content Area';
-  List<dynamic> _data = [];
+  final List<dynamic> _data = [];
   int _currentPage = 1;
   int _totalCount = 0;
   bool _isLoading = false;
@@ -50,53 +65,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _data.clear();
       _currentPage = 1;
     });
-    if (menu == '신청서 접수') {
-      _fetchData();
+    if (_selectedMenu != '폐기보고' && _selectedMenu != '폐기 보고 통계') {
+      //_fetchData();
+      callApi();
     }
     Navigator.pop(context);
-  }
-
-  Future<void> _fetchData() async {
-    if (_isLoading) return;
-    setState(() {
-      _isLoading = true;
-    });
-
-    final url = Uri.parse(
-        'http://211.119.124.9:9076/api/biz/nims/v1/getNimsBsshInfoSt');
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: {
-        "k": "",
-        "fg": "1",
-        "pg": _currentPage.toString(),
-        "bi": "",
-        "hp": "",
-        "bn": "중앙약국",
-        "bc": "",
-        "ymd": "",
-        "fg2": "1",
-        "userId": "suji",
-        "rprsntvNm": ""
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> jsonResponse = json.decode(response.body);
-      setState(() {
-        _data.addAll(jsonResponse['data']);
-        _totalCount = jsonResponse['totalCount'];
-        _isLoading = false;
-      });
-    } else {
-      print('Failed to load data');
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
   void _onScroll() {
@@ -104,7 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _scrollController.position.maxScrollExtent) {
       if (_data.length < _totalCount) {
         _currentPage++;
-        _fetchData();
+        //_fetchData();
+        callApi();
       }
     }
   }
@@ -115,36 +89,37 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     _scrollController.animateTo(
       _selectedRow * 48.0,
-      duration: Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
     );
-  }
-
-  String _truncateWithEllipsis(int cutoff, String text) {
-    return (text.length <= cutoff) ? text : '${text.substring(0, cutoff)}...';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Hamburger Menu Example'),
+        title: const Text('Hamburger Menu Example'),
       ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
-            DrawerHeader(
-              child: Text(
-                'Menu',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 24,
+            const SizedBox(
+              height: 80,
+              child: DrawerHeader(
+                margin: EdgeInsets.zero,
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Menu',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 24,
+                  ),
                 ),
               ),
             ),
             ExpansionTile(
-              title: Text(
+              title: const Text(
                 '폐기보고',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -156,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             ExpansionTile(
-              title: Text(
+              title: const Text(
                 '폐기 보고 통계',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -170,11 +145,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      body: _selectedMenu == '신청서 접수'
+      body: LoadingOverlay(
+        isLoading: _isLoading, 
+        child: (_selectedMenu != '폐기보고' && _selectedMenu != '폐기 보고 통계')
           ? Focus(
               focusNode: _focusNode,
-              onKey: (FocusNode node, RawKeyEvent event) {
-                if (event is RawKeyDownEvent) {
+              onKeyEvent: (FocusNode node, KeyEvent event) {
+                if (event is KeyDownEvent) {
                   if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
                     _moveCursor(1);
                     return KeyEventResult.handled;
@@ -185,176 +162,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
                 return KeyEventResult.ignored;
               },
-              child: Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Column(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(color: Colors.grey),
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 50,
-                                  child: Text('No',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                                Container(
-                                  width: 100,
-                                  child: Text('업체코드',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                                Container(
-                                  width: 150,
-                                  child: Text('업체명',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                                Container(
-                                  width: 100,
-                                  child: Text('대표자명',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                                Container(
-                                  width: 100,
-                                  child: Text('업종',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.vertical,
-                              child: Column(
-                                children: List.generate(
-                                  _data.length,
-                                  (index) {
-                                    final item = _data[index];
-                                    final isSelected = index == _selectedRow;
-                                    final isEven = index % 2 == 0;
-                                    return GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedRow = index;
-                                        });
-                                      },
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? Colors.blue.withOpacity(0.3)
-                                              : isEven
-                                                  ? Colors.grey.withOpacity(0.1)
-                                                  : Colors.white,
-                                          border: Border(
-                                            bottom:
-                                                BorderSide(color: Colors.grey),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 50,
-                                              padding: EdgeInsets.all(8.0),
-                                              child: Tooltip(
-                                                message: '${index + 1}',
-                                                child: Text('${index + 1}'),
-                                              ),
-                                            ),
-                                            Container(
-                                              width: 100,
-                                              padding: EdgeInsets.all(8.0),
-                                              child: Tooltip(
-                                                message:
-                                                    item['bsshCd'] ?? 'Unknown',
-                                                child: Text(
-                                                    _truncateWithEllipsis(
-                                                        10,
-                                                        item['bsshCd'] ??
-                                                            'Unknown')),
-                                              ),
-                                            ),
-                                            Container(
-                                              width: 150,
-                                              padding: EdgeInsets.all(8.0),
-                                              child: Tooltip(
-                                                waitDuration:
-                                                    Duration(milliseconds: 500),
-                                                message:
-                                                    item['bsshNm'] ?? 'Unknown',
-                                                child: Text(
-                                                    _truncateWithEllipsis(
-                                                        9,
-                                                        item['bsshNm'] ??
-                                                            'Unknown')),
-                                              ),
-                                            ),
-                                            Container(
-                                              width: 100,
-                                              padding: EdgeInsets.all(8.0),
-                                              child: Tooltip(
-                                                message: item['rprsntvNm'] ??
-                                                    'Unknown',
-                                                child: Text(
-                                                    _truncateWithEllipsis(
-                                                        9,
-                                                        item['rprsntvNm'] ??
-                                                            'Unknown')),
-                                              ),
-                                            ),
-                                            Container(
-                                              width: 100,
-                                              padding: EdgeInsets.all(8.0),
-                                              child: Tooltip(
-                                                message: item['indutyNm'] ??
-                                                    'Unknown',
-                                                child: Text(
-                                                    _truncateWithEllipsis(
-                                                        9,
-                                                        item['indutyNm'] ??
-                                                            'Unknown')),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text('1 ~ ${_data.length} / $_totalCount'),
-                  ),
-                ],
+              child: _data.isNotEmpty ? 
+              TableDataWidget(
+                data: _data,
+                selectedRow: _selectedRow,
+                scrollController: _scrollController,
+                onRowTap: (index) {
+                  setState(() {
+                    _selectedRow = index;
+                  });
+                },
+                totalCount: _totalCount,
+              )
+              : const Center(
+                  child: Text("데이터가 없습니다."),
               ),
             )
           : Center(
               child: Text(_selectedMenu),
             ),
+      ),
     );
   }
 
   Widget _buildMenuItem(String title) {
     return ListTile(
-      contentPadding: EdgeInsets.only(left: 16.0),
+      contentPadding: const EdgeInsets.only(left: 16.0),
       title: Text(
         title,
         style: TextStyle(
@@ -366,5 +199,36 @@ class _HomeScreenState extends State<HomeScreen> {
         _onMenuTap(title);
       },
     );
+  }
+
+  callApi() async {
+    print("callApi ${_selectedMenu}");
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    ApiResponse<dynamic> apiResponse = await ApiUtil.fetchData(
+        path: '/api/biz/nims/v1/getNimsBsshInfoSt',
+        method: 'POST',
+        parameters: {
+          "k": "",
+          "fg": "1",
+          "pg": _currentPage.toString(),
+          "bi": "",
+          "hp": "",
+          "bn": "중앙약국",
+          "bc": "",
+          "ymd": "",
+          "fg2": "1",
+          "userId": "suji",
+          "rprsntvNm": ""
+        });
+    
+    setState(() {
+      _data.addAll(apiResponse.data as List<dynamic>);
+      _totalCount = apiResponse.totalCount;
+      _isLoading = false;
+    });
   }
 }
